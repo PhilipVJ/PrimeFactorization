@@ -66,6 +66,12 @@ public class ThreadExample {
     public int bigCalculation() {
         return 10;
     }
+
+    public int value = 0;
+
+    public synchronized void increment() {
+        value++;
+    }
 }
 
 
