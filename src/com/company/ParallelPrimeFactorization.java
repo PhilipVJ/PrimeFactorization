@@ -32,21 +32,25 @@ public class ParallelPrimeFactorization extends AbstractPrimeFactorization {
         // You could also use a cached thread pool, but it will generate threads if needed
         // which is very slow in this case
         ExecutorService executor = Executors.newFixedThreadPool(this.coresAvailable - 1);
-        List<Future> futures = new ArrayList<Future>();
+        List<Future> futures = new ArrayList<>();
+        int chunkSize = 10;
         // Make calculation tasks
-        for (int i = 0; i < primeNumbers.size(); i++) {
+        for (int i = 0; i < primeNumbers.size(); i += chunkSize) {
             int startIndex = i + 1;
-            long multiplyValue = primeNumbers.get(i);
             // Runnable does not return a value, but callable does
             Runnable task = () -> {
-                for (int j = startIndex; j < primeNumbers.size(); j++) {
-                    if (!Thread.currentThread().isInterrupted()) {
-                        long value = primeNumbers.get(j);
-                        if (multiplyValue * value == product) {
-                            setResult(new PrimeResult(value, multiplyValue));
+                for (int k = 0; k < chunkSize; k++) {
+                    int stepStart = startIndex + k;
+                    long multiplyValue = primeNumbers.get(stepStart - 1);
+                    for (int j = stepStart; j < primeNumbers.size(); j++) {
+                        if (!Thread.currentThread().isInterrupted()) {
+                            long value = primeNumbers.get(j);
+                            if (multiplyValue * value == product) {
+                                setResult(new PrimeResult(value, multiplyValue));
+                            }
+                        } else {
+                            break;
                         }
-                    } else {
-                        break;
                     }
                 }
             };
@@ -59,26 +63,26 @@ public class ParallelPrimeFactorization extends AbstractPrimeFactorization {
             // Checking each 100 ms
             try {
                 Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            if (this.result != null) {
-                isDone = true;
-                // Cancel all futures
-                futures.forEach(future -> future.cancel(true));
-            } else {
-                // Check if all tasks are done - meaning a result was not found
-                boolean allTasksDone = true;
-                for (Future task : futures
-                ) {
-                    if (!task.isDone()) {
-                        allTasksDone = false;
+                if (this.result != null) {
+                    isDone = true;
+                    // Cancel all futures
+                    futures.forEach(future -> future.cancel(true));
+                } else {
+                    // Check if all tasks are done - meaning a result was not found
+                    boolean allTasksDone = true;
+                    for (Future task : futures
+                    ) {
+                        if (!task.isDone()) {
+                            allTasksDone = false;
+                        }
+                    }
+                    if (allTasksDone) {
+                        isDone = true;
+                        System.out.println("Did not find a result. The chosen inputs are not primes.");
                     }
                 }
-                if (allTasksDone) {
-                    isDone = true;
-                    System.out.println("Did not find a result. The chosen inputs are not primes.");
-                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
         if (this.result != null) {
@@ -139,7 +143,7 @@ public class ParallelPrimeFactorization extends AbstractPrimeFactorization {
                     }
                 }
             };
-            Callable callableTask = Executors.callable(task);
+            Callable<Object> callableTask = Executors.callable(task);
             tasks.add(callableTask);
         }
         try {
