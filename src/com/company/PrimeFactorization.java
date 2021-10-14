@@ -24,23 +24,15 @@ public class PrimeFactorization {
         System.out.println("Cores available: " + cores);
         // Other primes:
         // 1471 2243 3593 271 10039 13841  18097
-        long firstPrime = 7;
-        long secondPrime = 11;
+        long firstPrime = 18097;
+        long secondPrime = 13841;
         long product = firstPrime * secondPrime;
-        System.out.println("First prime to find: " + firstPrime);
-        System.out.println("Second prime to find: " + secondPrime);
-        System.out.println("Product: " + product);
         LongPredicate isPrime = argument -> isAPrime(argument);
         long startTime = System.currentTimeMillis();
         // Get all prime numbers from 1 to the product e.g. 1 to 1532
         System.out.println("Starting to find prime numbers");
         long currentTimePrePrime = System.currentTimeMillis();
         List<Long> primeNumbers = LongStream.rangeClosed(1, product).parallel().filter(isPrime).boxed().collect(Collectors.toList());
-        System.out.println("PRIMES: ");
-        for (long prime : primeNumbers
-        ) {
-            System.out.println(prime);
-        }
         System.out.println("Total amount of primes: " + primeNumbers.size());
         long currentTimePostPrime = System.currentTimeMillis();
         System.out.println("Took: " + ((currentTimePostPrime - currentTimePrePrime) / 1000));

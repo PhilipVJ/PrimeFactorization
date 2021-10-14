@@ -6,11 +6,13 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class PrimeFactorizationWithoutStreams {
 
     private PrimeResult result;
     private boolean isDone = false;
+    private ReentrantLock lock = new ReentrantLock(true);
     public List<Long> primeNumbers = new ArrayList<Long>();
 
     synchronized void setResult(PrimeResult result) {
@@ -23,24 +25,15 @@ public class PrimeFactorizationWithoutStreams {
         System.out.println("Cores available: " + cores);
         // Other primes:
         // 1471 2243 3593 271 10039 13841  18097
-        long firstPrime = 7;
-        long secondPrime = 11;
+        long firstPrime = 18097;
+        long secondPrime = 13841;
         long product = firstPrime * secondPrime;
-        System.out.println("First prime to find: " + firstPrime);
-        System.out.println("Second prime to find: " + secondPrime);
-        System.out.println("Product: " + product);
         long startTime = System.currentTimeMillis();
         // Get all prime numbers from 1 to the product e.g. 1 to 1532
         System.out.println("Starting to find prime numbers");
         long currentTimePrePrime = System.currentTimeMillis();
         setPrimesInRange(product);
-        System.out.println("PRIMES: ");
         this.primeNumbers.sort(null);
-        for (long prime : this.primeNumbers
-        ) {
-            System.out.println(prime);
-        }
-        System.out.println("Total amount of primes: " + this.primeNumbers.size());
         long currentTimePostPrime = System.currentTimeMillis();
         System.out.println("Took: " + ((currentTimePostPrime - currentTimePrePrime) / 1000));
         // Executor service to handle threads
@@ -54,6 +47,7 @@ public class PrimeFactorizationWithoutStreams {
             long multiplyValue = primeNumbers.get(i);
             // Runnable does not return a value, but callable does
             Runnable task = () -> {
+
                 for (int j = startIndex; j < primeNumbers.size(); j++) {
                     if (!Thread.currentThread().isInterrupted()) {
                         long value = primeNumbers.get(j);
@@ -95,6 +89,7 @@ public class PrimeFactorizationWithoutStreams {
                     isDone = true;
                     System.out.println("Did not find a result. The chosen inputs are not primes.");
                 }
+
             }
         }
         if (this.result != null) {
@@ -114,9 +109,6 @@ public class PrimeFactorizationWithoutStreams {
         int maxTaskAmount = 10;
         long divided = value / maxTaskAmount;
         long leftOver = value - (divided * maxTaskAmount);
-        System.out.println("Divided: " + divided);
-        System.out.println("Leftover: " + leftOver);
-
         // I had to do partitions here otherwise it would show java heap space error
         int taskCount = 0;
         for (long i = 1; i <= maxTaskAmount + 1; i++) {
@@ -133,13 +125,14 @@ public class PrimeFactorizationWithoutStreams {
 
             long finalStart = start;
             long finalEnd = end;
-            System.out.println(finalStart + "    " + finalEnd);
             Runnable task = () -> {
-
                 for (long j = finalStart; j < finalEnd; j++) {
                     if (isAPrime(j)) {
-                        synchronized (this) {
+                        this.lock.lock();
+                        try {
                             this.primeNumbers.add(j);
+                        } finally {
+                            this.lock.unlock();
                         }
                     }
                 }
@@ -150,6 +143,7 @@ public class PrimeFactorizationWithoutStreams {
         try {
             System.out.println("Getting primes in parallel without streams");
             executor.invokeAll(tasks);
+            executor.shutdown();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
