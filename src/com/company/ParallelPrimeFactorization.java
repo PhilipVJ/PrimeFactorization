@@ -1,6 +1,7 @@
 package com.company;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -99,11 +100,13 @@ public class ParallelPrimeFactorization extends AbstractPrimeFactorization {
 
     private void setPrimeNumbersWithStream(long toValue) {
         LongPredicate isPrime = value -> isAPrime(value);
-        this.primeNumbers = LongStream.rangeClosed(1, toValue).parallel().filter(isPrime).boxed().collect(Collectors.toList());
+        this.primeNumbers = LongStream.rangeClosed(1, toValue).
+                parallel().filter(isPrime).boxed().
+                collect(Collectors.toList());
     }
 
     private void setPrimeNumbersWithoutStream(long value) {
-        ExecutorService executor = Executors.newFixedThreadPool(this.coresAvailable + 50);
+        ExecutorService executor = Executors.newFixedThreadPool(this.coresAvailable);
         List<Callable<Object>> tasks = new ArrayList<>();
         int maxTaskAmount = 100;
         long divided = value / maxTaskAmount;
@@ -142,7 +145,7 @@ public class ParallelPrimeFactorization extends AbstractPrimeFactorization {
         try {
             System.out.println("Getting primes in parallel without streams");
             executor.invokeAll(tasks);
-            this.primeNumbers.sort(null);
+            Collections.sort(this.primeNumbers);
             executor.shutdown();
         } catch (InterruptedException e) {
             e.printStackTrace();
