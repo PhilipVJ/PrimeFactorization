@@ -7,47 +7,37 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.LongPredicate;
+import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
-public class PrimeFactorizationWithoutStreams {
-
-    private PrimeResult result;
+public class ParallelPrimeFactorization extends AbstractPrimeFactorization {
     private boolean isDone = false;
-    private ReentrantLock lock = new ReentrantLock(true);
-    public List<Long> primeNumbers = new ArrayList<Long>();
+    private final boolean useStream;
+    private final ReentrantLock lock = new ReentrantLock(true);
 
     synchronized void setResult(PrimeResult result) {
         this.result = result;
     }
 
-    public void begin() {
-        System.out.println("Lets begin");
-        int cores = Runtime.getRuntime().availableProcessors();
-        System.out.println("Cores available: " + cores);
-        // Other primes:
-        // 1471 2243 3593 271 10039 13841  18097
-        long firstPrime = 18097;
-        long secondPrime = 13841;
-        long product = firstPrime * secondPrime;
-        long startTime = System.currentTimeMillis();
-        // Get all prime numbers from 1 to the product e.g. 1 to 1532
-        System.out.println("Starting to find prime numbers");
-        long currentTimePrePrime = System.currentTimeMillis();
-        setPrimesInRange(product);
-        this.primeNumbers.sort(null);
-        long currentTimePostPrime = System.currentTimeMillis();
-        System.out.println("Took: " + ((currentTimePostPrime - currentTimePrePrime) / 1000));
+    public ParallelPrimeFactorization(boolean useStream, long primeOne, long primeTwo, String jobName) {
+        super(primeOne, primeTwo, jobName);
+        this.useStream = useStream;
+    }
+
+    @Override
+    void factorize() {
         // Executor service to handle threads
         // You could also use a cached thread pool, but it will generate threads if needed
         // which is very slow in this case
-        ExecutorService executor = Executors.newFixedThreadPool(cores - 1);
+        ExecutorService executor = Executors.newFixedThreadPool(this.coresAvailable - 1);
         List<Future> futures = new ArrayList<Future>();
         // Make calculation tasks
-        for (int i = 0; i < this.primeNumbers.size(); i++) {
+        for (int i = 0; i < primeNumbers.size(); i++) {
             int startIndex = i + 1;
             long multiplyValue = primeNumbers.get(i);
             // Runnable does not return a value, but callable does
             Runnable task = () -> {
-
                 for (int j = startIndex; j < primeNumbers.size(); j++) {
                     if (!Thread.currentThread().isInterrupted()) {
                         long value = primeNumbers.get(j);
@@ -72,7 +62,6 @@ public class PrimeFactorizationWithoutStreams {
                 e.printStackTrace();
             }
             if (this.result != null) {
-                System.out.println("Result found");
                 isDone = true;
                 // Cancel all futures
                 futures.forEach(future -> future.cancel(true));
@@ -89,24 +78,34 @@ public class PrimeFactorizationWithoutStreams {
                     isDone = true;
                     System.out.println("Did not find a result. The chosen inputs are not primes.");
                 }
-
             }
         }
         if (this.result != null) {
-            System.out.println("Result: " + this.result.primeOne + "  &  " + this.result.primeTwo);
+            printResult();
         }
         // Executor services needs to be shutdown, or they will continue to run
         executor.shutdown();
-        long endTime = System.currentTimeMillis();
-        double totalTimeInSeconds = (endTime - startTime) / 1000.0;
-        System.out.println("Total time: " + totalTimeInSeconds + " seconds");
-
     }
 
-    public void setPrimesInRange(long value) {
-        ExecutorService executor = Executors.newFixedThreadPool(10);
+    @Override
+    void setPrimeNumbers(long toValue) {
+        this.primeNumbers = new ArrayList<>();
+        if (useStream) {
+            this.setPrimeNumbersWithStream(toValue);
+        } else {
+            this.setPrimeNumbersWithoutStream(toValue);
+        }
+    }
+
+    private void setPrimeNumbersWithStream(long toValue) {
+        LongPredicate isPrime = value -> isAPrime(value);
+        this.primeNumbers = LongStream.rangeClosed(1, toValue).parallel().filter(isPrime).boxed().collect(Collectors.toList());
+    }
+
+    private void setPrimeNumbersWithoutStream(long value) {
+        ExecutorService executor = Executors.newFixedThreadPool(this.coresAvailable + 50);
         List<Callable<Object>> tasks = new ArrayList<>();
-        int maxTaskAmount = 10;
+        int maxTaskAmount = 100;
         long divided = value / maxTaskAmount;
         long leftOver = value - (divided * maxTaskAmount);
         // I had to do partitions here otherwise it would show java heap space error
@@ -143,22 +142,10 @@ public class PrimeFactorizationWithoutStreams {
         try {
             System.out.println("Getting primes in parallel without streams");
             executor.invokeAll(tasks);
+            this.primeNumbers.sort(null);
             executor.shutdown();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
     }
-
-    private boolean isAPrime(long number) {
-        if (number < 2) return false;
-        if (number % 2 == 0) return (number == 2);
-        int root = (int) Math.sqrt((double) number);
-        for (int i = 3; i <= root; i += 2) {
-            if (number % i == 0) return false;
-        }
-        return true;
-    }
-
-
 }
