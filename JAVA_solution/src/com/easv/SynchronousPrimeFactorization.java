@@ -1,5 +1,4 @@
-package com.company;
-
+package com.easv;
 import java.util.ArrayList;
 
 public class SynchronousPrimeFactorization extends AbstractPrimeFactorization {

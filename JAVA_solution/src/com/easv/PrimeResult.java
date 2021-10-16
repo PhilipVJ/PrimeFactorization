@@ -1,4 +1,4 @@
-package com.company;
+package com.easv;
 
 public class PrimeResult {
 
