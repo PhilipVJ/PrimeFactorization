@@ -7,8 +7,8 @@ public class Main {
         // 1471 2243 3593 271 10039 13841  18097  23689
 
         // Selected primes
-        long firstPrime = 2243;
-        long secondPrime = 10039;
+        long firstPrime = 18097;
+        long secondPrime = 23689;
 
         // Jobs
         ParallelPrimeFactorization psFactorization =

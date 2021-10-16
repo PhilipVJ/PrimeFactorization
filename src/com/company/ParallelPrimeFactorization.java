@@ -124,23 +124,26 @@ public class ParallelPrimeFactorization extends AbstractPrimeFactorization {
             start = taskCount * divided - divided;
             end = divided * taskCount;
             if (i == maxTaskAmount + 1) {
-                // This is left over time
+                // This is done to ensure the left over from the division is included
                 start = value - leftOver;
                 end = value;
             }
 
-            long finalStart = start;
-            long finalEnd = end;
+            long taskStart = start;
+            long taskEnd = end;
             Runnable task = () -> {
-                for (long j = finalStart; j < finalEnd; j++) {
+                List<Long> taskLocalPrimes = new ArrayList<>();
+                for (long j = taskStart; j < taskEnd; j++) {
                     if (isAPrime(j)) {
-                        this.lock.lock();
-                        try {
-                            this.primeNumbers.add(j);
-                        } finally {
-                            this.lock.unlock();
-                        }
+                        taskLocalPrimes.add(j);
                     }
+                }
+
+                this.lock.lock();
+                try {
+                    this.primeNumbers.addAll(taskLocalPrimes);
+                } finally {
+                    this.lock.unlock();
                 }
             };
             Callable<Object> callableTask = Executors.callable(task);
