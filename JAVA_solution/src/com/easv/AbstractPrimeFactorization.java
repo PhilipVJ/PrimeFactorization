@@ -1,17 +1,17 @@
 package com.easv;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 public abstract class AbstractPrimeFactorization {
 
-    private String jobName;
+    private final String jobName;
     public long primeOne;
     public long primeTwo;
     public long product;
     public int coresAvailable;
-    public PrimeResult result;
-
-    public List<Long> primeNumbers;
 
     private long startTime;
 
@@ -26,30 +26,61 @@ public abstract class AbstractPrimeFactorization {
         System.out.println("Product is: " + this.product);
     }
 
-    public void printResult() {
-        System.out.println("Result: " + this.result.primeOne + "  &  " + this.result.primeTwo);
-    }
-
     public void startFactorization() {
-        calculatePrimeNumbers(this.product);
-        long timePreFactorize = System.currentTimeMillis();
-        factorize();
-        long timePostFactorize = System.currentTimeMillis();
-        System.out.println("Time to factorize: " + ((timePostFactorize - timePreFactorize) / 1000));
+        CompletableFuture<PrimeResult> resultFuture =
+                CompletableFuture.supplyAsync(() -> {
+                    // Get primes and handle exceptions
+                    List<Long> primes = new ArrayList<>();
+                    try {
+                        primes=calculatePrimeNumbers(this.product);
+                    } catch (InterruptedException e) {
+                        System.out.println(e.getMessage());
+                        System.exit(1);
+                    }
+                    return primes;
+                }).thenApply(primes -> {
+                    // Get result and handle exceptions
+                    PrimeResult result = null;
+                    try {
+                        result = factorizeProduct(this.product, primes);
+                    } catch (InterruptedException | IllegalArgumentException ex) {
+                        System.out.println(ex.getMessage());
+                        System.exit(1);
+                    }
+                    return result;
+                });
+        try {
+            PrimeResult result = resultFuture.get();
+            System.out.println("Result is: " + result.primeOne + " & " + result.primeTwo);
+        } catch (InterruptedException | ExecutionException e) {
+            System.out.println("Error getting result with message: " + e.getMessage());
+        }
     }
 
-    public void calculatePrimeNumbers(long toValue) {
+    public List<Long> calculatePrimeNumbers(long toValue) throws InterruptedException {
         System.out.println("Starting to find prime numbers");
         long currentTimePrePrime = System.currentTimeMillis();
-        setPrimeNumbers(toValue);
+
+        List<Long> primeNumbers = getPrimeNumbers(toValue);
+
         System.out.println("Total amount of primes: " + primeNumbers.size());
         long currentTimePostPrime = System.currentTimeMillis();
+
         System.out.println("Time to find prime numbers: " + ((currentTimePostPrime - currentTimePrePrime) / 1000));
+        return primeNumbers;
     }
 
-    abstract void factorize();
+    public PrimeResult factorizeProduct(long product, List<Long> primes) throws InterruptedException {
+        long timePreFactorize = System.currentTimeMillis();
+        PrimeResult result = factorize(product, primes);
+        long timePostFactorize = System.currentTimeMillis();
+        System.out.println("Time to factorize: " + ((timePostFactorize - timePreFactorize) / 1000));
+        return result;
+    }
 
-    abstract void setPrimeNumbers(long toValue);
+    abstract PrimeResult factorize(long product, List<Long> primes) throws InterruptedException, IllegalArgumentException;
+
+    abstract List<Long> getPrimeNumbers(long toValue) throws InterruptedException;
 
     private void setAvailableCores() {
         this.coresAvailable = Runtime.getRuntime().availableProcessors();

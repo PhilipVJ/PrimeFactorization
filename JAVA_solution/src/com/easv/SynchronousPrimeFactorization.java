@@ -1,5 +1,6 @@
 package com.easv;
 import java.util.ArrayList;
+import java.util.List;
 
 public class SynchronousPrimeFactorization extends AbstractPrimeFactorization {
 
@@ -8,32 +9,28 @@ public class SynchronousPrimeFactorization extends AbstractPrimeFactorization {
     }
 
     @Override
-    void factorize() {
-        for (int i = 0; i < this.primeNumbers.size(); i++) {
+    PrimeResult factorize(long product, List<Long> primeNumbers) {
+        for (int i = 0; i < primeNumbers.size(); i++) {
             int startIndex = i + 1;
-            long multiplyValue = this.primeNumbers.get(i);
-            boolean isDone = false;
-            for (int j = startIndex; j < this.primeNumbers.size(); j++) {
-                long value = this.primeNumbers.get(j);
+            long multiplyValue = primeNumbers.get(i);
+            for (int j = startIndex; j < primeNumbers.size(); j++) {
+                long value = primeNumbers.get(j);
                 if (multiplyValue * value == this.product) {
-                    this.result = new PrimeResult(value, multiplyValue);
-                    isDone = true;
+                    return new PrimeResult(value, multiplyValue);
                 }
             }
-            if (isDone) {
-                printResult();
-                break;
-            }
         }
+        return null;
     }
 
     @Override
-    void setPrimeNumbers(long toValue) {
-        this.primeNumbers = new ArrayList<>();
+    List<Long> getPrimeNumbers(long toValue) {
+        List<Long> primeNumbers = new ArrayList<>();
         for (long i = 1; i < toValue; i++) {
             if (isAPrime(i)) {
-                this.primeNumbers.add(i);
+                primeNumbers.add(i);
             }
         }
+        return primeNumbers;
     }
 }
